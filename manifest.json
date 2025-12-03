@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Moodle Vocab Helper",
+  "description": "Détecte des mots espagnols sur Moodle et affiche leur traduction en français.",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/moodle/*",
+        "*://moodle.*/*",
+        "*://*/course/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vocab.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
