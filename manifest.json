@@ -2,9 +2,11 @@
   "manifest_version": 3,
   "name": "Moodle Vocab Helper",
   "description": "Détecte des mots espagnols sur Moodle et affiche leur traduction en français.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "icons": {
-    "128": "icon.svg"
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   },
   "permissions": [
     "activeTab"
