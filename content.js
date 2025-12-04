@@ -1,4 +1,4 @@
-// content.js - Version avec recherche manuelle + détection automatique
+// content.js - Version fixée : sidebar toujours visible
 
 (function() {
   'use strict';
@@ -32,7 +32,7 @@
       z-index: 2147483647 !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
       overflow: hidden !important;
-      display: none !important;
+      display: block !important;
       backdrop-filter: blur(20px) !important;
       transition: box-shadow 0.2s ease !important;
     `;
@@ -58,7 +58,7 @@
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
       </svg>
-      Vocabulaire détecté
+      Vocabulaire
     `;
 
     // Drag functionality
@@ -149,7 +149,8 @@
     clearBtn.onclick = () => {
       searchInput.value = '';
       clearBtn.style.opacity = '0';
-      afficherResultatsRecherche('');
+      // Réafficher la détection auto
+      raffraichirAffichage();
       searchInput.focus();
     };
 
@@ -165,7 +166,12 @@
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.trim();
       clearBtn.style.opacity = query ? '1' : '0';
-      afficherResultatsRecherche(query);
+      
+      if (query) {
+        afficherResultatsRecherche(query);
+      } else {
+        raffraichirAffichage();
+      }
     });
 
     searchWrapper.appendChild(searchIcon);
@@ -181,6 +187,14 @@
       max-height: 432px !important;
       overflow-y: auto !important;
       overflow-x: hidden !important;
+    `;
+
+    // Message initial
+    container.innerHTML = `
+      <div style="text-align: center; padding: 32px 20px; color: #999; font-size: 13px;">
+        Aucun mot détecté.<br>
+        <span style="font-size: 12px; margin-top: 8px; display: block;">Utilisez la recherche ci-dessus</span>
+      </div>
     `;
 
     // Custom scrollbar
@@ -210,29 +224,90 @@
     sidebar.appendChild(container);
     document.documentElement.appendChild(sidebar);
 
-    console.log('[VOCAB HELPER] Sidebar créée avec recherche manuelle');
+    console.log('[VOCAB HELPER] Sidebar créée');
     return sidebar;
+  }
+
+  // Rafraîchir l'affichage (recharger les mots détectés)
+  function raffraichirAffichage() {
+    const container = document.getElementById('vocab-helper-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Réafficher tous les mots détectés
+    const motsAffiches = Array.from(motsDetectes);
+    
+    if (motsAffiches.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 32px 20px; color: #999; font-size: 13px;">
+          Aucun mot détecté.<br>
+          <span style="font-size: 12px; margin-top: 8px; display: block;">Utilisez la recherche ci-dessus</span>
+        </div>
+      `;
+      return;
+    }
+
+    // Reconstruire les items
+    motsAffiches.forEach(cle => {
+      const [espagnol, francais] = cle.split('-');
+      ajouterItemAuto(espagnol, francais, cle);
+    });
+  }
+
+  // Ajouter un item détecté automatiquement
+  function ajouterItemAuto(motOriginal, traduction, cle) {
+    const container = document.getElementById('vocab-helper-list');
+    if (!container) return;
+
+    const item = document.createElement('div');
+    item.setAttribute('data-key', cle);
+    item.style.cssText = `
+      background: #fafafa !important;
+      border: 1px solid rgba(0, 0, 0, 0.06) !important;
+      border-radius: 8px !important;
+      padding: 14px 16px !important;
+      margin-bottom: 8px !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      transition: all 0.15s ease !important;
+    `;
+
+    item.onmouseover = () => {
+      item.style.background = '#f0f0f0';
+      item.style.borderColor = 'rgba(0, 0, 0, 0.12)';
+    };
+
+    item.onmouseout = () => {
+      item.style.background = '#fafafa';
+      item.style.borderColor = 'rgba(0, 0, 0, 0.06)';
+    };
+
+    const texte = document.createElement('div');
+    texte.style.cssText = `
+      flex: 1 !important;
+      font-size: 14px !important;
+      line-height: 1.5 !important;
+      color: #1a1a1a !important;
+    `;
+    texte.innerHTML = `
+      <span style="font-weight: 600; color: #1a1a1a;">${motOriginal}</span>
+      <span style="margin: 0 10px; color: #999; font-weight: 300;">→</span>
+      <span style="color: #2563eb; font-weight: 500;">${traduction}</span>
+    `;
+
+    const btnCopy = creerBoutonCopie(traduction);
+
+    item.appendChild(texte);
+    item.appendChild(btnCopy);
+    container.appendChild(item);
   }
 
   // Fonction de recherche manuelle
   function afficherResultatsRecherche(query) {
     const container = document.getElementById('vocab-helper-list');
     if (!container) return;
-
-    // Si pas de recherche, afficher les mots détectés automatiquement
-    if (!query) {
-      // Réafficher les mots détectés automatiquement
-      const motsPresentsSurPage = Array.from(motsDetectes);
-      if (motsPresentsSurPage.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 32px 20px; color: #999; font-size: 13px;">
-            Aucun mot détecté sur cette page.<br>
-            Utilisez la recherche manuelle ci-dessus.
-          </div>
-        `;
-      }
-      return;
-    }
 
     // Recherche dans le vocabulaire
     const queryNorm = normaliser(query);
@@ -241,20 +316,17 @@
     for (const [espagnol, francais] of Object.entries(vocabulaire)) {
       const espagnolNorm = normaliser(espagnol);
       
-      // Recherche exacte ou contient
       if (espagnolNorm === queryNorm || espagnolNorm.includes(queryNorm)) {
         resultats.push({ espagnol, francais, exacte: espagnolNorm === queryNorm });
       }
     }
 
-    // Trier : résultats exactes d'abord
     resultats.sort((a, b) => {
       if (a.exacte && !b.exacte) return -1;
       if (!a.exacte && b.exacte) return 1;
       return a.espagnol.localeCompare(b.espagnol);
     });
 
-    // Afficher les résultats
     container.innerHTML = '';
 
     if (resultats.length === 0) {
@@ -266,7 +338,6 @@
       return;
     }
 
-    // Limiter à 10 résultats max
     const resultatsAffiches = resultats.slice(0, 10);
     
     resultatsAffiches.forEach(({ espagnol, francais }) => {
@@ -286,7 +357,7 @@
     }
   }
 
-  // Ajouter un item de recherche (similaire mais sans gestion des doublons)
+  // Ajouter un item de recherche
   function ajouterItemRecherche(motOriginal, traduction) {
     const container = document.getElementById('vocab-helper-list');
     if (!container) return;
@@ -334,7 +405,7 @@
     container.appendChild(item);
   }
 
-  // Créer bouton copie réutilisable
+  // Créer bouton copie
   function creerBoutonCopie(traduction) {
     const btnCopy = document.createElement('button');
     btnCopy.innerHTML = `
@@ -428,56 +499,12 @@
     
     motsDetectes.add(cle);
     const sb = creerSidebar();
-    const container = document.getElementById('vocab-helper-list');
     const searchInput = document.getElementById('vocab-search-input');
 
     // Si une recherche est en cours, ne pas ajouter automatiquement
     if (searchInput && searchInput.value.trim()) return;
 
-    const item = document.createElement('div');
-    item.setAttribute('data-key', cle);
-    item.style.cssText = `
-      background: #fafafa !important;
-      border: 1px solid rgba(0, 0, 0, 0.06) !important;
-      border-radius: 8px !important;
-      padding: 14px 16px !important;
-      margin-bottom: 8px !important;
-      display: flex !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      transition: all 0.15s ease !important;
-    `;
-
-    item.onmouseover = () => {
-      item.style.background = '#f0f0f0';
-      item.style.borderColor = 'rgba(0, 0, 0, 0.12)';
-    };
-
-    item.onmouseout = () => {
-      item.style.background = '#fafafa';
-      item.style.borderColor = 'rgba(0, 0, 0, 0.06)';
-    };
-
-    const texte = document.createElement('div');
-    texte.style.cssText = `
-      flex: 1 !important;
-      font-size: 14px !important;
-      line-height: 1.5 !important;
-      color: #1a1a1a !important;
-    `;
-    texte.innerHTML = `
-      <span style="font-weight: 600; color: #1a1a1a;">${motOriginal}</span>
-      <span style="margin: 0 10px; color: #999; font-weight: 300;">→</span>
-      <span style="color: #2563eb; font-weight: 500;">${traduction}</span>
-    `;
-
-    const btnCopy = creerBoutonCopie(traduction);
-
-    item.appendChild(texte);
-    item.appendChild(btnCopy);
-    container.appendChild(item);
-
-    sb.style.display = 'block';
+    ajouterItemAuto(motOriginal, traduction, cle);
     console.log(`[VOCAB HELPER] Ajouté: ${motOriginal} → ${traduction}`);
   }
 
@@ -511,7 +538,6 @@
     if (Object.keys(vocabulaire).length === 0) return;
 
     const searchInput = document.getElementById('vocab-search-input');
-    // Ne pas scanner si une recherche est en cours
     if (searchInput && searchInput.value.trim()) return;
 
     let texteComplet = document.body.innerText || '';
@@ -531,31 +557,29 @@
       }
     }
 
-    const container = document.getElementById('vocab-helper-list');
-    if (container) {
-      const clesPresentesActuelles = new Set();
-      for (const [esp, fra] of motsPresents.entries()) {
-        clesPresentesActuelles.add(`${esp.toLowerCase()}-${fra.toLowerCase()}`);
-      }
-
-      const items = Array.from(container.querySelectorAll('[data-key]'));
-      items.forEach(item => {
-        const key = item.getAttribute('data-key');
-        if (!clesPresentesActuelles.has(key)) {
-          item.remove();
-          motsDetectes.delete(key);
-        }
-      });
+    // Nettoyer les mots disparus
+    const clesPresentesActuelles = new Set();
+    for (const [esp, fra] of motsPresents.entries()) {
+      clesPresentesActuelles.add(`${esp.toLowerCase()}-${fra.toLowerCase()}`);
     }
 
+    const aSupprimer = [];
+    motsDetectes.forEach(cle => {
+      if (!clesPresentesActuelles.has(cle)) {
+        aSupprimer.push(cle);
+      }
+    });
+
+    aSupprimer.forEach(cle => motsDetectes.delete(cle));
+
+    // Ajouter les nouveaux
     for (const [espagnol, francais] of motsPresents.entries()) {
       ajouterTraduction(espagnol, francais);
     }
 
-    if (motsPresents.size === 0 && sidebar && (!searchInput || !searchInput.value.trim())) {
-      sidebar.style.display = 'none';
-      motsDetectes.clear();
-      if (container) container.innerHTML = '';
+    // Rafraîchir l'affichage si pas de recherche
+    if (!searchInput || !searchInput.value.trim()) {
+      raffraichirAffichage();
     }
   }
 
@@ -569,6 +593,7 @@
       .then(data => {
         vocabulaire = data;
         console.log('[VOCAB HELPER] Vocabulaire chargé:', Object.keys(vocabulaire).length, 'mots');
+        creerSidebar();
         scanner();
       })
       .catch(err => {
@@ -599,5 +624,5 @@
     charger();
   }
 
-  console.log('[VOCAB HELPER] Extension prête avec recherche manuelle');
+  console.log('[VOCAB HELPER] Extension prête');
 })();
