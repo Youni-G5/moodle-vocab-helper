@@ -1,4 +1,4 @@
-// content.js - Version fixée : sidebar toujours visible
+// content.js - Version avec bouton minimiser
 
 (function() {
   'use strict';
@@ -9,11 +9,79 @@
 
   let vocabulaire = {};
   let sidebar = null;
+  let floatingBtn = null;
   let motsDetectes = new Set();
   let isDragging = false;
   let currentX, currentY, initialX, initialY;
+  let isMinimized = false;
 
-  // Créer la sidebar professionnelle avec barre de recherche
+  // Créer le bouton flottant
+  function creerBoutonFlottant() {
+    if (floatingBtn) return floatingBtn;
+
+    floatingBtn = document.createElement('button');
+    floatingBtn.id = 'vocab-helper-float-btn';
+    floatingBtn.title = 'Ouvrir le vocabulaire';
+    floatingBtn.style.cssText = `
+      position: fixed !important;
+      bottom: 30px !important;
+      right: 30px !important;
+      width: 56px !important;
+      height: 56px !important;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+      border: none !important;
+      border-radius: 50% !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+      cursor: pointer !important;
+      display: none !important;
+      align-items: center !important;
+      justify-content: center !important;
+      z-index: 2147483646 !important;
+      transition: all 0.3s ease !important;
+    `;
+
+    floatingBtn.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+    `;
+
+    floatingBtn.onmouseover = () => {
+      floatingBtn.style.transform = 'scale(1.1)';
+      floatingBtn.style.boxShadow = '0 6px 25px rgba(0, 0, 0, 0.4)';
+    };
+
+    floatingBtn.onmouseout = () => {
+      floatingBtn.style.transform = 'scale(1)';
+      floatingBtn.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+    };
+
+    floatingBtn.onclick = () => {
+      ouvrirSidebar();
+    };
+
+    document.documentElement.appendChild(floatingBtn);
+    console.log('[VOCAB HELPER] Bouton flottant créé');
+    return floatingBtn;
+  }
+
+  // Ouvrir la sidebar
+  function ouvrirSidebar() {
+    if (!sidebar) creerSidebar();
+    sidebar.style.display = 'block';
+    floatingBtn.style.display = 'none';
+    isMinimized = false;
+  }
+
+  // Fermer la sidebar
+  function fermerSidebar() {
+    if (sidebar) sidebar.style.display = 'none';
+    floatingBtn.style.display = 'flex';
+    isMinimized = true;
+  }
+
+  // Créer la sidebar professionnelle
   function creerSidebar() {
     if (sidebar) return sidebar;
 
@@ -50,16 +118,63 @@
       cursor: move !important;
       display: flex !important;
       align-items: center !important;
-      gap: 10px !important;
+      justify-content: space-between !important;
       user-select: none !important;
     `;
-    header.innerHTML = `
+
+    const headerLeft = document.createElement('div');
+    headerLeft.style.cssText = `
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+    `;
+    headerLeft.innerHTML = `
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
       </svg>
-      Vocabulaire
+      <span>Vocabulaire</span>
     `;
+
+    // Bouton fermer
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    `;
+    closeBtn.title = 'Minimiser';
+    closeBtn.style.cssText = `
+      background: transparent !important;
+      border: none !important;
+      padding: 4px !important;
+      cursor: pointer !important;
+      opacity: 0.7 !important;
+      transition: opacity 0.2s ease !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 4px !important;
+    `;
+
+    closeBtn.onmouseover = () => {
+      closeBtn.style.opacity = '1';
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    };
+
+    closeBtn.onmouseout = () => {
+      closeBtn.style.opacity = '0.7';
+      closeBtn.style.background = 'transparent';
+    };
+
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      fermerSidebar();
+    };
+
+    header.appendChild(headerLeft);
+    header.appendChild(closeBtn);
 
     // Drag functionality
     header.addEventListener('mousedown', dragStart);
@@ -107,7 +222,6 @@
       searchInput.style.boxShadow = 'none';
     };
 
-    // Icône de recherche
     const searchIcon = document.createElement('div');
     searchIcon.style.cssText = `
       position: absolute !important;
@@ -122,7 +236,6 @@
       </svg>
     `;
 
-    // Bouton clear
     const clearBtn = document.createElement('button');
     clearBtn.id = 'vocab-search-clear';
     clearBtn.style.cssText = `
@@ -149,7 +262,6 @@
     clearBtn.onclick = () => {
       searchInput.value = '';
       clearBtn.style.opacity = '0';
-      // Réafficher la détection auto
       raffraichirAffichage();
       searchInput.focus();
     };
@@ -162,7 +274,6 @@
       clearBtn.style.color = '#666';
     };
 
-    // Event listener pour la recherche
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.trim();
       clearBtn.style.opacity = query ? '1' : '0';
@@ -179,7 +290,6 @@
     searchWrapper.appendChild(clearBtn);
     searchContainer.appendChild(searchWrapper);
 
-    // Container pour les résultats
     const container = document.createElement('div');
     container.id = 'vocab-helper-list';
     container.style.cssText = `
@@ -189,7 +299,6 @@
       overflow-x: hidden !important;
     `;
 
-    // Message initial
     container.innerHTML = `
       <div style="text-align: center; padding: 32px 20px; color: #999; font-size: 13px;">
         Aucun mot détecté.<br>
@@ -197,7 +306,6 @@
       </div>
     `;
 
-    // Custom scrollbar
     const style = document.createElement('style');
     style.textContent = `
       #vocab-helper-list::-webkit-scrollbar {
@@ -228,14 +336,11 @@
     return sidebar;
   }
 
-  // Rafraîchir l'affichage (recharger les mots détectés)
   function raffraichirAffichage() {
     const container = document.getElementById('vocab-helper-list');
     if (!container) return;
 
     container.innerHTML = '';
-
-    // Réafficher tous les mots détectés
     const motsAffiches = Array.from(motsDetectes);
     
     if (motsAffiches.length === 0) {
@@ -248,14 +353,12 @@
       return;
     }
 
-    // Reconstruire les items
     motsAffiches.forEach(cle => {
       const [espagnol, francais] = cle.split('-');
       ajouterItemAuto(espagnol, francais, cle);
     });
   }
 
-  // Ajouter un item détecté automatiquement
   function ajouterItemAuto(motOriginal, traduction, cle) {
     const container = document.getElementById('vocab-helper-list');
     if (!container) return;
@@ -298,24 +401,20 @@
     `;
 
     const btnCopy = creerBoutonCopie(traduction);
-
     item.appendChild(texte);
     item.appendChild(btnCopy);
     container.appendChild(item);
   }
 
-  // Fonction de recherche manuelle
   function afficherResultatsRecherche(query) {
     const container = document.getElementById('vocab-helper-list');
     if (!container) return;
 
-    // Recherche dans le vocabulaire
     const queryNorm = normaliser(query);
     const resultats = [];
 
     for (const [espagnol, francais] of Object.entries(vocabulaire)) {
       const espagnolNorm = normaliser(espagnol);
-      
       if (espagnolNorm === queryNorm || espagnolNorm.includes(queryNorm)) {
         resultats.push({ espagnol, francais, exacte: espagnolNorm === queryNorm });
       }
@@ -339,25 +438,18 @@
     }
 
     const resultatsAffiches = resultats.slice(0, 10);
-    
     resultatsAffiches.forEach(({ espagnol, francais }) => {
       ajouterItemRecherche(espagnol, francais);
     });
 
     if (resultats.length > 10) {
       const moreInfo = document.createElement('div');
-      moreInfo.style.cssText = `
-        text-align: center;
-        padding: 12px;
-        color: #999;
-        font-size: 12px;
-      `;
+      moreInfo.style.cssText = `text-align: center; padding: 12px; color: #999; font-size: 12px;`;
       moreInfo.textContent = `... et ${resultats.length - 10} autre(s) résultat(s)`;
       container.appendChild(moreInfo);
     }
   }
 
-  // Ajouter un item de recherche
   function ajouterItemRecherche(motOriginal, traduction) {
     const container = document.getElementById('vocab-helper-list');
     if (!container) return;
@@ -386,12 +478,7 @@
     };
 
     const texte = document.createElement('div');
-    texte.style.cssText = `
-      flex: 1 !important;
-      font-size: 14px !important;
-      line-height: 1.5 !important;
-      color: #1a1a1a !important;
-    `;
+    texte.style.cssText = `flex: 1 !important; font-size: 14px !important; line-height: 1.5 !important; color: #1a1a1a !important;`;
     texte.innerHTML = `
       <span style="font-weight: 600; color: #1a1a1a;">${motOriginal}</span>
       <span style="margin: 0 10px; color: #999; font-weight: 300;">→</span>
@@ -399,13 +486,11 @@
     `;
 
     const btnCopy = creerBoutonCopie(traduction);
-
     item.appendChild(texte);
     item.appendChild(btnCopy);
     container.appendChild(item);
   }
 
-  // Créer bouton copie
   function creerBoutonCopie(traduction) {
     const btnCopy = document.createElement('button');
     btnCopy.innerHTML = `
@@ -414,7 +499,7 @@
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
       </svg>
     `;
-    btnCopy.title = 'Copier la traduction';
+    btnCopy.title = 'Copier';
     btnCopy.style.cssText = `
       background: transparent !important;
       border: none !important;
@@ -423,8 +508,6 @@
       opacity: 0.5 !important;
       transition: opacity 0.15s ease !important;
       display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
       border-radius: 4px !important;
     `;
 
@@ -441,18 +524,9 @@
     btnCopy.onclick = (e) => {
       e.stopPropagation();
       navigator.clipboard.writeText(traduction).then(() => {
-        btnCopy.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        `;
+        btnCopy.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
         setTimeout(() => {
-          btnCopy.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-          `;
+          btnCopy.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
         }, 1200);
       });
     };
@@ -460,9 +534,8 @@
     return btnCopy;
   }
 
-  // Gestion du drag
   function dragStart(e) {
-    if (e.target.closest('#vocab-helper-list') || e.target.closest('#vocab-search-input')) return;
+    if (e.target.closest('#vocab-helper-list') || e.target.closest('#vocab-search-input') || e.target.closest('button')) return;
     isDragging = true;
     initialX = e.clientX - sidebar.offsetLeft;
     initialY = e.clientY - sidebar.offsetTop;
@@ -491,64 +564,45 @@
     sidebar.style.transition = 'box-shadow 0.2s ease';
   }
 
-  // Ajouter une traduction (détection automatique)
   function ajouterTraduction(motOriginal, traduction) {
     const cle = `${motOriginal.toLowerCase()}-${traduction.toLowerCase()}`;
-    
     if (motsDetectes.has(cle)) return;
     
     motsDetectes.add(cle);
     const sb = creerSidebar();
     const searchInput = document.getElementById('vocab-search-input');
-
-    // Si une recherche est en cours, ne pas ajouter automatiquement
     if (searchInput && searchInput.value.trim()) return;
 
     ajouterItemAuto(motOriginal, traduction, cle);
     console.log(`[VOCAB HELPER] Ajouté: ${motOriginal} → ${traduction}`);
   }
 
-  // Normaliser
   function normaliser(texte) {
-    return texte
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return texte.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
-  // Détection mot
   function detecterMot(texte, mot) {
     const regex1 = new RegExp(`\\b${mot}\\b`, 'i');
     if (regex1.test(texte)) return true;
-
     const texteNorm = normaliser(texte);
     const motNorm = normaliser(mot);
     const regex2 = new RegExp(`\\b${motNorm}\\b`, 'i');
     if (regex2.test(texteNorm)) return true;
-
-    const mots = texteNorm.split(' ');
-    return mots.includes(motNorm);
+    return texteNorm.split(' ').includes(motNorm);
   }
 
-  // Scanner
   function scanner() {
     if (Object.keys(vocabulaire).length === 0) return;
-
     const searchInput = document.getElementById('vocab-search-input');
     if (searchInput && searchInput.value.trim()) return;
 
     let texteComplet = document.body.innerText || '';
-    
     const inputs = document.querySelectorAll('input[type="text"], textarea, [contenteditable="true"]');
     inputs.forEach(input => {
       texteComplet += ' ' + (input.value || input.textContent || '');
     });
 
     const motsPresents = new Map();
-
     for (const [espagnol, francais] of Object.entries(vocabulaire)) {
       if (detecterMot(texteComplet, espagnol)) {
         if (!motsPresents.has(espagnol)) {
@@ -557,7 +611,6 @@
       }
     }
 
-    // Nettoyer les mots disparus
     const clesPresentesActuelles = new Set();
     for (const [esp, fra] of motsPresents.entries()) {
       clesPresentesActuelles.add(`${esp.toLowerCase()}-${fra.toLowerCase()}`);
@@ -572,36 +625,41 @@
 
     aSupprimer.forEach(cle => motsDetectes.delete(cle));
 
-    // Ajouter les nouveaux
     for (const [espagnol, francais] of motsPresents.entries()) {
       ajouterTraduction(espagnol, francais);
     }
 
-    // Rafraîchir l'affichage si pas de recherche
     if (!searchInput || !searchInput.value.trim()) {
       raffraichirAffichage();
     }
   }
 
-  // Charger vocabulaire
   function charger() {
     const url = chrome.runtime.getURL('vocab.json');
     console.log('[VOCAB HELPER] Chargement:', url);
 
     fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        vocabulaire = data;
-        console.log('[VOCAB HELPER] Vocabulaire chargé:', Object.keys(vocabulaire).length, 'mots');
-        creerSidebar();
-        scanner();
+      .then(r => {
+        if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+        return r.text();
+      })
+      .then(text => {
+        try {
+          vocabulaire = JSON.parse(text);
+          console.log('[VOCAB HELPER] Vocabulaire chargé:', Object.keys(vocabulaire).length, 'mots');
+          creerSidebar();
+          creerBoutonFlottant();
+          scanner();
+        } catch (e) {
+          console.error('[VOCAB HELPER] Erreur JSON:', e.message);
+          console.error('[VOCAB HELPER] Texte:', text.substring(0, 200));
+        }
       })
       .catch(err => {
-        console.error('[VOCAB HELPER] Erreur:', err);
+        console.error('[VOCAB HELPER] Erreur chargement:', err);
       });
   }
 
-  // Observer
   const observer = new MutationObserver(() => {
     scanner();
   });
@@ -617,7 +675,6 @@
     setTimeout(scanner, 100);
   }, true);
 
-  // Initialisation
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', charger);
   } else {
